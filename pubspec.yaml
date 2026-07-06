@@ -23,8 +23,8 @@ dependencies:
 
   # Media
   youtube_player_flutter: ^9.0.4
-  syncfusion_flutter_pdfviewer: ^26.1.35
-
+  syncfusion_flutter_pdfviewer: ^33.2.15
+  
   # Offline downloads (PDFs only)
   path_provider: ^2.1.3
   dio: ^5.5.0
