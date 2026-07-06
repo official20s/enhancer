@@ -24,7 +24,7 @@ class _EnhancerAppState extends State<EnhancerApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Enhancer',
+      title: 'Rattamaar',
       debugShowCheckedModeBanner: false,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
@@ -96,7 +96,7 @@ class HomePage extends StatelessWidget {
         slivers: [
           SliverAppBar(
             floating: true,
-            title: Text('Enhancer', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+            title: Text('Rattamaar', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
             actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none))],
           ),
           SliverToBoxAdapter(
