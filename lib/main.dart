@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -136,8 +137,173 @@ class HomePage extends StatelessWidget {
 
 class ExplorePage extends StatelessWidget {
   const ExplorePage({super.key});
+
   @override
-  Widget build(BuildContext context) => const Center(child: Text('Explore — course/subject/chapter browser'));
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Explore')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('courses').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final courses = snapshot.data!.docs;
+          if (courses.isEmpty) {
+            return const Center(child: Text('No courses yet'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: courses.length,
+            itemBuilder: (context, index) {
+              final course = courses[index];
+              final data = course.data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  title: Text(data['name'] ?? 'Untitled',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  subtitle: Text(data['examType'] ?? ''),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SubjectsPage(
+                          courseId: course.id,
+                          courseName: data['name'] ?? '',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class SubjectsPage extends StatelessWidget {
+  final String courseId;
+  final String courseName;
+  const SubjectsPage({super.key, required this.courseId, required this.courseName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(courseName)),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('courses')
+            .doc(courseId)
+            .collection('subjects')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final subjects = snapshot.data!.docs;
+          if (subjects.isEmpty) {
+            return const Center(child: Text('No subjects yet'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: subjects.length,
+            itemBuilder: (context, index) {
+              final subject = subjects[index];
+              final data = subject.data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  title: Text(data['name'] ?? 'Untitled'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChaptersPage(
+                          courseId: courseId,
+                          subjectId: subject.id,
+                          subjectName: data['name'] ?? '',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ChaptersPage extends StatelessWidget {
+  final String courseId;
+  final String subjectId;
+  final String subjectName;
+  const ChaptersPage({
+    super.key,
+    required this.courseId,
+    required this.subjectId,
+    required this.subjectName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(subjectName)),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('courses')
+            .doc(courseId)
+            .collection('subjects')
+            .doc(subjectId)
+            .collection('chapters')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final chapters = snapshot.data!.docs;
+          if (chapters.isEmpty) {
+            return const Center(child: Text('No chapters yet'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: chapters.length,
+            itemBuilder: (context, index) {
+              final chapter = chapters[index];
+              final data = chapter.data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  title: Text(data['name'] ?? 'Untitled'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    // TODO: agla step — lectures list yahan aayegi
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 
 class DownloadsPage extends StatelessWidget {
