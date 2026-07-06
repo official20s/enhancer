@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "212988210502",
+    "project_id": "rattamaar-8cf53",
+    "storage_bucket": "rattamaar-8cf53.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212988210502:android:880a6f825273afe2aac947",
+        "android_client_info": {
+          "package_name": "com.official20s.enhancer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFGJhOT1Tql_m4mVVzieNlOMR29Yedb24"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
