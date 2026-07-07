@@ -352,7 +352,14 @@
     }).join('');
     document.getElementById('panel-title').textContent = LEVEL_LABEL[currentLevel];
   }
-
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
   function renderList(){
     const listEl = document.getElementById('item-list');
     listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
@@ -371,8 +378,8 @@
         if(currentLevel === 'courses') sub = d.examType || '';
         if(currentLevel === 'lectures') sub = d.youtubeId ? 'Video linked' : 'No video';
         row.innerHTML = `
-          <div class="item-main" onclick="drillDown('${doc.id}', ${JSON.stringify(title)})">
-            <div class="item-title">${title}</div>
+          <div class="item-main" data-id="${doc.id}" data-title="${escapeHtml(title)}" onclick="drillDown(this.dataset.id, this.dataset.title)">
+            <div class="item-title">${escapeHtml(title)}</div>
             ${sub ? `<div class="item-sub">${sub}</div>` : ''}
           </div>
           <div class="item-actions">
