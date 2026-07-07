@@ -131,7 +131,68 @@ class HomePage extends StatelessWidget {
               child: Text('Explore Courses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
-          // TODO: Wire this up to Firestore courses collection
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 130,
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('courses').snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final courses = snapshot.data!.docs;
+                  if (courses.isEmpty) {
+                    return const Center(child: Text('No courses yet'));
+                  }
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: courses.length,
+                    itemBuilder: (context, index) {
+                      final course = courses[index];
+                      final data = course.data() as Map<String, dynamic>;
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SubjectsPage(
+                                courseId: course.id,
+                                courseName: data['name'] ?? '',
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: 130,
+                          margin: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Icon(Icons.menu_book, color: Theme.of(context).colorScheme.primary),
+                              const SizedBox(height: 8),
+                              Text(
+                                data['name'] ?? '',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
