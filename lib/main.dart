@@ -171,20 +171,42 @@ class HomePage extends StatelessWidget {
                             color: Theme.of(context).colorScheme.primaryContainer,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Icon(Icons.menu_book, color: Theme.of(context).colorScheme.primary),
-                              const SizedBox(height: 8),
-                              Text(
-                                data['name'] ?? '',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
+                          child: Stack(
+  fit: StackFit.expand,
+  children: [
+    if (data['imageUrl'] != null && (data['imageUrl'] as String).isNotEmpty)
+      ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          data['imageUrl'],
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(Icons.menu_book, color: Theme.of(context).colorScheme.primary),
+        ),
+      ),
+    Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+        ),
+      ),
+    ),
+    Positioned(
+      left: 12,
+      right: 12,
+      bottom: 12,
+      child: Text(
+        data['name'] ?? '',
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+  ],
+),
                         ),
                       );
                     },
