@@ -27,9 +27,14 @@ jobs:
 
       - name: Build APK (release)
         run: flutter build apk --release
+        
+      - name: Build APK (debug)
+        run: flutter build apk --debug
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: enhancer-app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: enhancer-apks
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/app-debug.apk
