@@ -5,6 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +17,8 @@ Future<void> main() async {
     url: 'https://vltnyoquzhnyhrdwjgyt.supabase.co',
     anonKey: 'sb_publishable_YChIvTT7vr7mnzXO9yMgGg_9vKkZniM',
   );
+  await Hive.initFlutter();
+  await Hive.openBox('downloads');
   runApp(const EnhancerApp());
 }
 class EnhancerApp extends StatefulWidget {
@@ -402,12 +408,64 @@ class ChaptersPage extends StatelessWidget {
   }
 }
 
-class DownloadsPage extends StatelessWidget {
+class DownloadsPage extends StatefulWidget {
   const DownloadsPage({super.key});
+
   @override
-  Widget build(BuildContext context) => const Center(child: Text('Downloads — offline content manager'));
+  State<DownloadsPage> createState() => _DownloadsPageState();
 }
 
+class _DownloadsPageState extends State<DownloadsPage> {
+  Box get _box => Hive.box('downloads');
+
+  void _delete(String key, String path) {
+    final file = File(path);
+    if (file.existsSync()) file.deleteSync();
+    _box.delete(key);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keys = _box.keys.toList();
+    return Scaffold(
+      appBar: AppBar(title: const Text('Downloads')),
+      body: keys.isEmpty
+          ? const Center(child: Text('No downloads yet'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: keys.length,
+              itemBuilder: (context, index) {
+                final key = keys[index] as String;
+                final entry = _box.get(key);
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                    title: Text(entry['name'] ?? 'Untitled'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _delete(key, entry['path']),
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PdfViewerPage(
+                            url: key,
+                            title: entry['name'] ?? 'PDF',
+                            localPath: entry['path'],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
   @override
@@ -539,28 +597,11 @@ class _LectureDetailPageState extends State<LectureDetailPage> {
             padding: const EdgeInsets.all(16),
             child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
-          if (pdfName != null && pdfName.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-                  title: Text(pdfName),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: (pdfUrl == null || pdfUrl.isEmpty)
-                      ? null
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PdfViewerPage(url: pdfUrl, title: pdfName),
-                            ),
-                          );
-                        },
-                ),
-              ),
-            ),
+          if (pdfName != null && pdfName.isNotEmpty && pdfUrl != null && pdfUrl.isNotEmpty)
+  Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: PdfCard(pdfName: pdfName, pdfUrl: pdfUrl),
+  ),
         ],
       ),
     );
@@ -570,13 +611,104 @@ class _LectureDetailPageState extends State<LectureDetailPage> {
 class PdfViewerPage extends StatelessWidget {
   final String url;
   final String title;
-  const PdfViewerPage({super.key, required this.url, required this.title});
+  final String? localPath;
+  const PdfViewerPage({super.key, required this.url, required this.title, this.localPath});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      body: SfPdfViewer.network(url),
+      body: (localPath != null && File(localPath!).existsSync())
+          ? SfPdfViewer.file(File(localPath!))
+          : SfPdfViewer.network(url),
+    );
+  }
+}
+
+class PdfCard extends StatefulWidget {
+  final String pdfName;
+  final String pdfUrl;
+  const PdfCard({super.key, required this.pdfName, required this.pdfUrl});
+
+  @override
+  State<PdfCard> createState() => _PdfCardState();
+}
+
+class _PdfCardState extends State<PdfCard> {
+  double? _progress;
+  String? _localPath;
+
+  Box get _box => Hive.box('downloads');
+
+  @override
+  void initState() {
+    super.initState();
+    final saved = _box.get(widget.pdfUrl);
+    if (saved != null && File(saved['path']).existsSync()) {
+      _localPath = saved['path'];
+    }
+  }
+
+  Future<void> _download() async {
+    setState(() => _progress = 0);
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final safeName = widget.pdfName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+      final savePath = '${dir.path}/$safeName.pdf';
+      await Dio().download(
+        widget.pdfUrl,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total > 0) {
+            setState(() => _progress = received / total);
+          }
+        },
+      );
+      await _box.put(widget.pdfUrl, {'name': widget.pdfName, 'path': savePath});
+      setState(() {
+        _localPath = savePath;
+        _progress = null;
+      });
+    } catch (e) {
+      setState(() => _progress = null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+        title: Text(widget.pdfName),
+        subtitle: _progress != null
+            ? LinearProgressIndicator(value: _progress)
+            : null,
+        trailing: _progress != null
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+            : IconButton(
+                icon: Icon(_localPath != null ? Icons.check_circle : Icons.download,
+                    color: _localPath != null ? Colors.green : null),
+                onPressed: _localPath != null ? null : _download,
+              ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PdfViewerPage(
+                url: widget.pdfUrl,
+                title: widget.pdfName,
+                localPath: _localPath,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
