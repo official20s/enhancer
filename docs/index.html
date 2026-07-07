@@ -392,6 +392,7 @@
       .replace(/'/g,'&#39;');
   }
   function drillDown(id, name){
+    alert('Clicked! id=' + id + ' name=' + name + ' level=' + currentLevel);
     if(currentLevel === 'lectures') return; // leaf level
     if(currentLevel === 'courses'){ path.courseId = id; path.courseName = name; jumpTo('subjects'); }
     else if(currentLevel === 'subjects'){ path.subjectId = id; path.subjectName = name; jumpTo('chapters'); }
