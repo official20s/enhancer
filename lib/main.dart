@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -295,8 +297,18 @@ class ChaptersPage extends StatelessWidget {
                   title: Text(data['name'] ?? 'Untitled'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // TODO: agla step — lectures list yahan aayegi
-                  },
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => LecturesPage(
+        courseId: courseId,
+        subjectId: subjectId,
+        chapterId: chapter.id,
+        chapterName: data['name'] ?? '',
+      ),
+    ),
+  );
+},
                 ),
               );
             },
@@ -323,4 +335,165 @@ class MorePage extends StatelessWidget {
   const MorePage({super.key});
   @override
   Widget build(BuildContext context) => const Center(child: Text('Settings / Dark Mode / About'));
+}
+
+class LecturesPage extends StatelessWidget {
+  final String courseId;
+  final String subjectId;
+  final String chapterId;
+  final String chapterName;
+  const LecturesPage({
+    super.key,
+    required this.courseId,
+    required this.subjectId,
+    required this.chapterId,
+    required this.chapterName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(chapterName)),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('courses')
+            .doc(courseId)
+            .collection('subjects')
+            .doc(subjectId)
+            .collection('chapters')
+            .doc(chapterId)
+            .collection('lectures')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final lectures = snapshot.data!.docs;
+          if (lectures.isEmpty) {
+            return const Center(child: Text('No lectures yet'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: lectures.length,
+            itemBuilder: (context, index) {
+              final lecture = lectures[index];
+              final data = lecture.data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: const Icon(Icons.play_circle_fill, size: 32),
+                  title: Text(data['title'] ?? 'Untitled'),
+                  subtitle: Text('${((data['durationSec'] ?? 0) / 60).floor()} min'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LectureDetailPage(data: data),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class LectureDetailPage extends StatefulWidget {
+  final Map<String, dynamic> data;
+  const LectureDetailPage({super.key, required this.data});
+
+  @override
+  State<LectureDetailPage> createState() => _LectureDetailPageState();
+}
+
+class _LectureDetailPageState extends State<LectureDetailPage> {
+  YoutubePlayerController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final youtubeId = widget.data['youtubeId'] as String?;
+    if (youtubeId != null && youtubeId.isNotEmpty) {
+      _controller = YoutubePlayerController(
+        initialVideoId: youtubeId,
+        flags: const YoutubePlayerFlags(autoPlay: false),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.data['title'] ?? 'Lecture';
+    final pdfName = widget.data['pdfName'] as String?;
+    final pdfUrl = widget.data['pdfUrl'] as String?;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_controller != null)
+            YoutubePlayer(controller: _controller!)
+          else
+            Container(
+              height: 200,
+              color: Colors.black12,
+              child: const Center(child: Text('No video available')),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          if (pdfName != null && pdfName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                  title: Text(pdfName),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: (pdfUrl == null || pdfUrl.isEmpty)
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PdfViewerPage(url: pdfUrl, title: pdfName),
+                            ),
+                          );
+                        },
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class PdfViewerPage extends StatelessWidget {
+  final String url;
+  final String title;
+  const PdfViewerPage({super.key, required this.url, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: SfPdfViewer.network(url),
+    );
+  }
 }
