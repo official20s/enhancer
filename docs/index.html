@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rattamaar — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --ink:#16231f;
+    --paper:#f6f4ee;
+    --paper-2:#eeebe1;
+    --line:#d9d4c4;
+    --brand:#136f4b;
+    --brand-dim:#0e5a3c;
+    --brand-tint:#e2f0e9;
+    --amber:#c98a2c;
+    --red:#b0402f;
+    --muted:#6b7770;
+    --tab-course:#136f4b;
+    --tab-subject:#2c6e8f;
+    --tab-chapter:#a06a1f;
+    --tab-lecture:#7c4a9e;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(22,35,31,0.06), 0 4px 14px rgba(22,35,31,0.05);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:'Fraunces',serif; font-weight:600; margin:0; }
+
+  /* ---------- Login gate ---------- */
+  #login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .login-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:40px 32px;
+    max-width:380px;
+    width:100%;
+    box-shadow:var(--shadow);
+  }
+  .login-card .mark{
+    width:44px;height:44px;border-radius:10px;
+    background:var(--brand);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-family:'Fraunces',serif;font-weight:700;font-size:20px;
+    margin-bottom:18px;
+  }
+  .login-card h1{ font-size:24px; margin-bottom:6px; }
+  .login-card p.sub{ color:var(--muted); font-size:14px; margin:0 0 24px; }
+  label{ font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); display:block; margin-bottom:6px; }
+  input[type=email], input[type=password], input[type=text], input[type=number], textarea{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    background:#fff;
+    color:var(--ink);
+    margin-bottom:16px;
+  }
+  input:focus, textarea:focus{ outline:2px solid var(--brand); outline-offset:1px; border-color:var(--brand); }
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    border:none;
+    border-radius:8px;
+    padding:11px 18px;
+    cursor:pointer;
+  }
+  .btn-primary{ background:var(--brand); color:#fff; width:100%; }
+  .btn-primary:hover{ background:var(--brand-dim); }
+  #login-error{ color:var(--red); font-size:13px; margin-top:12px; display:none; }
+
+  /* ---------- App shell ---------- */
+  #app{ display:none; min-height:100vh; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 24px;
+    background:#fff;
+    border-bottom:1px solid var(--line);
+  }
+  .topbar .brand{ display:flex; align-items:center; gap:10px; }
+  .topbar .mark{
+    width:30px;height:30px;border-radius:7px;background:var(--brand);
+    color:#fff;font-family:'Fraunces',serif;font-weight:700;
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+  }
+  .topbar h1{ font-size:17px; }
+  #logout-btn{ background:transparent; color:var(--muted); border:1px solid var(--line); }
+  #logout-btn:hover{ color:var(--ink); border-color:var(--muted); }
+
+  .layout{ display:flex; max-width:1180px; margin:0 auto; padding:28px 20px; gap:0; }
+
+  /* Binder tab rail = signature element */
+  .tab-rail{ display:flex; flex-direction:column; gap:10px; margin-right:0; padding-top:6px; }
+  .tab-rail button{
+    writing-mode:vertical-rl;
+    text-orientation:mixed;
+    padding:16px 9px;
+    border-radius:8px 0 0 8px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    color:#fff;
+    opacity:.55;
+    transition:opacity .15s ease, padding-right .15s ease;
+  }
+  .tab-rail button.active{ opacity:1; padding-right:14px; }
+  .tab-rail button[data-level="courses"]{ background:var(--tab-course); }
+  .tab-rail button[data-level="subjects"]{ background:var(--tab-subject); }
+  .tab-rail button[data-level="chapters"]{ background:var(--tab-chapter); }
+  .tab-rail button[data-level="lectures"]{ background:var(--tab-lecture); }
+  .tab-rail button:disabled{ opacity:.25; cursor:not-allowed; }
+
+  .main-panel{
+    flex:1;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:0 12px 12px 12px;
+    box-shadow:var(--shadow);
+    min-height:70vh;
+    overflow:hidden;
+  }
+  .breadcrumb{
+    padding:16px 24px;
+    border-bottom:1px solid var(--line);
+    background:var(--paper-2);
+    font-size:13px;
+    color:var(--muted);
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  }
+  .breadcrumb .crumb{ cursor:pointer; color:var(--brand); font-weight:600; }
+  .breadcrumb .crumb:hover{ text-decoration:underline; }
+  .breadcrumb .sep{ color:var(--line); }
+
+  .panel-body{ padding:24px; }
+  .panel-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .panel-header h2{ font-size:20px; }
+  .btn-add{ background:var(--amber); color:#fff; }
+  .btn-add:hover{ filter:brightness(0.93); }
+
+  .item-list{ display:flex; flex-direction:column; gap:10px; }
+  .item-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--paper);
+  }
+  .item-row .item-main{ cursor:pointer; flex:1; }
+  .item-row .item-title{ font-weight:600; font-size:14px; }
+  .item-row .item-sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .item-actions{ display:flex; gap:8px; }
+  .icon-btn{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    width:32px; height:32px; border-radius:6px; padding:0;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+  }
+  .icon-btn:hover{ color:var(--ink); border-color:var(--muted); }
+  .icon-btn.danger:hover{ color:var(--red); border-color:var(--red); }
+  .empty-state{ text-align:center; padding:60px 20px; color:var(--muted); }
+  .empty-state .big{ font-family:'Fraunces',serif; font-size:20px; color:var(--ink); margin-bottom:6px; }
+
+  /* Modal form */
+  .overlay{
+    display:none; position:fixed; inset:0; background:rgba(22,35,31,0.45);
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal{
+    background:#fff; border-radius:14px; padding:28px; max-width:440px; width:100%;
+    max-height:88vh; overflow-y:auto;
+  }
+  .modal h3{ font-size:18px; margin-bottom:18px; }
+  .modal-actions{ display:flex; gap:10px; margin-top:6px; }
+  .btn-secondary{ background:var(--paper-2); color:var(--ink); }
+  .btn-secondary:hover{ background:var(--line); }
+  .hint{ font-size:12px; color:var(--muted); margin:-10px 0 16px; }
+
+  @media (max-width:640px){
+    .layout{ flex-direction:column; padding:16px 12px; }
+    .tab-rail{ flex-direction:row; margin-bottom:12px; }
+    .tab-rail button{ writing-mode:horizontal-tb; border-radius:8px; padding:10px 14px; }
+    .tab-rail button.active{ padding-right:14px; }
+    .main-panel{ border-radius:12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="mark">R</div>
+    <h1>Rattamaar Admin</h1>
+    <p class="sub">Sign in to manage courses, subjects, chapters and lectures.</p>
+    <label for="email">Email</label>
+    <input type="email" id="email" autocomplete="username" />
+    <label for="password">Password</label>
+    <input type="password" id="password" autocomplete="current-password" />
+    <button class="btn-primary" onclick="login()">Sign in</button>
+    <p id="login-error"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">R</div>
+      <h1>Rattamaar Admin</h1>
+    </div>
+    <button id="logout-btn" onclick="logout()">Sign out</button>
+  </div>
+
+  <div class="layout">
+    <div class="tab-rail">
+      <button data-level="courses" onclick="jumpTo('courses')">COURSES</button>
+      <button data-level="subjects" disabled onclick="jumpTo('subjects')">SUBJECTS</button>
+      <button data-level="chapters" disabled onclick="jumpTo('chapters')">CHAPTERS</button>
+      <button data-level="lectures" disabled onclick="jumpTo('lectures')">LECTURES</button>
+    </div>
+
+    <div class="main-panel">
+      <div class="breadcrumb" id="breadcrumb"></div>
+      <div class="panel-body">
+        <div class="panel-header">
+          <h2 id="panel-title">Courses</h2>
+          <button class="btn-add" onclick="openForm()">+ Add</button>
+        </div>
+        <div class="item-list" id="item-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FORM MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modal-title">Add item</h3>
+    <div id="form-fields"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" style="flex:1" onclick="saveItem()">Save</button>
+      <button class="btn-secondary" style="flex:1" onclick="closeForm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAGYyMCpa06139JbM7DvAiUDwC-PH-1HOI",
+    authDomain: "rattamaar-8cf53.firebaseapp.com",
+    projectId: "rattamaar-8cf53",
+    storageBucket: "rattamaar-8cf53.firebasestorage.app",
+    messagingSenderId: "212988210502",
+    appId: "1:212988210502:web:6a4c38a99ab3e980aac947"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // ---------- Auth ----------
+  function login(){
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('login-error');
+    errEl.style.display = 'none';
+    auth.signInWithEmailAndPassword(email, password).catch(err => {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    });
+  }
+  function logout(){ auth.signOut(); }
+
+  auth.onAuthStateChanged(user => {
+    document.getElementById('login-screen').style.display = user ? 'none' : 'flex';
+    document.getElementById('app').style.display = user ? 'block' : 'none';
+    if(user){ jumpTo('courses'); }
+  });
+
+  // ---------- Navigation state ----------
+  // path holds the chain of selected ids/names going down the hierarchy
+  let path = { courseId:null, courseName:null, subjectId:null, subjectName:null, chapterId:null, chapterName:null };
+  let currentLevel = 'courses';
+
+  const LEVELS = ['courses','subjects','chapters','lectures'];
+  const LEVEL_LABEL = { courses:'Courses', subjects:'Subjects', chapters:'Chapters', lectures:'Lectures' };
+
+  function collectionRefForLevel(level){
+    if(level === 'courses') return db.collection('courses');
+    if(level === 'subjects') return db.collection('courses').doc(path.courseId).collection('subjects');
+    if(level === 'chapters') return db.collection('courses').doc(path.courseId).collection('subjects').doc(path.subjectId).collection('chapters');
+    if(level === 'lectures') return db.collection('courses').doc(path.courseId).collection('subjects').doc(path.subjectId).collection('chapters').doc(path.chapterId).collection('lectures');
+  }
+
+  function jumpTo(level){
+    // guard: cannot jump ahead without selection
+    const idx = LEVELS.indexOf(level);
+    if(idx > 0 && !pathHasLevel(idx)) return;
+    currentLevel = level;
+    renderTabs();
+    renderBreadcrumb();
+    renderList();
+  }
+
+  function pathHasLevel(idx){
+    if(idx >= 1 && !path.courseId) return false;
+    if(idx >= 2 && !path.subjectId) return false;
+    if(idx >= 3 && !path.chapterId) return false;
+    return true;
+  }
+
+  function renderTabs(){
+    document.querySelectorAll('.tab-rail button').forEach(btn=>{
+      const lvl = btn.dataset.level;
+      const idx = LEVELS.indexOf(lvl);
+      btn.disabled = !pathHasLevel(idx);
+      btn.classList.toggle('active', lvl === currentLevel);
+    });
+  }
+
+  function renderBreadcrumb(){
+    const bc = document.getElementById('breadcrumb');
+    let parts = [{label:'Courses', level:'courses'}];
+    if(path.courseName) parts.push({label:path.courseName, level:'subjects'});
+    if(path.subjectName) parts.push({label:path.subjectName, level:'chapters'});
+    if(path.chapterName) parts.push({label:path.chapterName, level:'lectures'});
+    bc.innerHTML = parts.map((p,i)=>{
+      const isLast = i === parts.length-1;
+      const crumb = `<span class="crumb" onclick="jumpTo('${p.level}')">${p.label}</span>`;
+      return i===0 ? crumb : `<span class="sep">/</span>${crumb}`;
+    }).join('');
+    document.getElementById('panel-title').textContent = LEVEL_LABEL[currentLevel];
+  }
+
+  function renderList(){
+    const listEl = document.getElementById('item-list');
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
+    collectionRefForLevel(currentLevel).get().then(snap=>{
+      if(snap.empty){
+        listEl.innerHTML = `<div class="empty-state"><div class="big">Nothing here yet</div>Add the first ${LEVEL_LABEL[currentLevel].toLowerCase().slice(0,-1)} to get started.</div>`;
+        return;
+      }
+      listEl.innerHTML = '';
+      snap.forEach(doc=>{
+        const d = doc.data();
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        const title = d.name || d.title || 'Untitled';
+        let sub = '';
+        if(currentLevel === 'courses') sub = d.examType || '';
+        if(currentLevel === 'lectures') sub = d.youtubeId ? 'Video linked' : 'No video';
+        row.innerHTML = `
+          <div class="item-main" onclick="drillDown('${doc.id}', ${JSON.stringify(title)})">
+            <div class="item-title">${title}</div>
+            ${sub ? `<div class="item-sub">${sub}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <button class="icon-btn" onclick="event.stopPropagation(); openForm('${doc.id}')" title="Edit">✎</button>
+            <button class="icon-btn danger" onclick="event.stopPropagation(); deleteItem('${doc.id}')" title="Delete">🗑</button>
+          </div>`;
+        listEl.appendChild(row);
+      });
+    });
+  }
+
+  function drillDown(id, name){
+    if(currentLevel === 'lectures') return; // leaf level
+    if(currentLevel === 'courses'){ path.courseId = id; path.courseName = name; jumpTo('subjects'); }
+    else if(currentLevel === 'subjects'){ path.subjectId = id; path.subjectName = name; jumpTo('chapters'); }
+    else if(currentLevel === 'chapters'){ path.chapterId = id; path.chapterName = name; jumpTo('lectures'); }
+  }
+
+  // reset deeper path when jumping backward
+  const originalJumpTo = jumpTo;
+  jumpTo = function(level){
+    const idx = LEVELS.indexOf(level);
+    if(idx <= 0) { path.courseId=null; path.courseName=null; }
+    if(idx <= 1) { path.subjectId=null; path.subjectName=null; }
+    if(idx <= 2) { path.chapterId=null; path.chapterName=null; }
+    originalJumpTo(level);
+  };
+
+  // ---------- Form fields per level ----------
+  const FIELD_DEFS = {
+    courses: [
+      {key:'name', label:'Course name', type:'text', placeholder:'JEE (Main + Adv)'},
+      {key:'examType', label:'Exam type', type:'text', placeholder:'JEE'},
+      {key:'imageUrl', label:'Thumbnail image URL', type:'text', placeholder:'https://...supabase.co/.../image.jpg'},
+    ],
+    subjects: [
+      {key:'name', label:'Subject name', type:'text', placeholder:'Physics'},
+    ],
+    chapters: [
+      {key:'name', label:'Chapter name', type:'text', placeholder:'1. Kinematics'},
+    ],
+    lectures: [
+      {key:'title', label:'Lecture title', type:'text', placeholder:'Kinematics - Introduction'},
+      {key:'youtubeId', label:'YouTube video ID', type:'text', placeholder:'dQw4w9WgXcQ (the part after v= in the URL)'},
+      {key:'durationSec', label:'Duration (seconds)', type:'number', placeholder:'2892'},
+      {key:'pdfName', label:'PDF name', type:'text', placeholder:'Kinematics Complete Notes'},
+      {key:'pdfUrl', label:'PDF URL (Supabase public link)', type:'text', placeholder:'https://...supabase.co/storage/.../file.pdf'},
+    ]
+  };
+
+  let editingId = null;
+
+  function openForm(id){
+    editingId = id || null;
+    document.getElementById('modal-title').textContent = id ? 'Edit item' : 'Add item';
+    const fields = FIELD_DEFS[currentLevel];
+    const container = document.getElementById('form-fields');
+    container.innerHTML = '';
+
+    const renderFields = (data) => {
+      fields.forEach(f=>{
+        const wrap = document.createElement('div');
+        const val = data && data[f.key] !== undefined ? data[f.key] : '';
+        wrap.innerHTML = `<label>${f.label}</label><input type="${f.type}" id="field-${f.key}" placeholder="${f.placeholder}" value="${val}" />`;
+        container.appendChild(wrap);
+      });
+    };
+
+    if(id){
+      collectionRefForLevel(currentLevel).doc(id).get().then(doc=>{
+        renderFields(doc.data());
+      });
+    } else {
+      renderFields(null);
+    }
+    document.getElementById('overlay').style.display = 'flex';
+  }
+
+  function closeForm(){
+    document.getElementById('overlay').style.display = 'none';
+    editingId = null;
+  }
+
+  function saveItem(){
+    const fields = FIELD_DEFS[currentLevel];
+    const data = {};
+    fields.forEach(f=>{
+      const el = document.getElementById('field-'+f.key);
+      let v = el.value.trim();
+      if(f.type === 'number') v = v === '' ? 0 : Number(v);
+      data[f.key] = v;
+    });
+    const ref = collectionRefForLevel(currentLevel);
+    const promise = editingId ? ref.doc(editingId).update(data) : ref.add(data);
+    promise.then(()=>{
+      closeForm();
+      renderList();
+    }).catch(err=> alert('Error: ' + err.message));
+  }
+
+  function deleteItem(id){
+    if(!confirm('Delete this item? This cannot be undone.')) return;
+    collectionRefForLevel(currentLevel).doc(id).delete().then(renderList);
+  }
+</script>
+</body>
+</html>
