@@ -352,14 +352,7 @@
     }).join('');
     document.getElementById('panel-title').textContent = LEVEL_LABEL[currentLevel];
   }
-  function escapeHtml(str){
-    return String(str)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;');
-  }
+  
   function renderList(){
     const listEl = document.getElementById('item-list');
     listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">Loading…</p>';
@@ -390,7 +383,14 @@
       });
     });
   }
-
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
   function drillDown(id, name){
     if(currentLevel === 'lectures') return; // leaf level
     if(currentLevel === 'courses'){ path.courseId = id; path.courseName = name; jumpTo('subjects'); }
