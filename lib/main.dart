@@ -39,29 +39,14 @@ class _EnhancerAppState extends State<EnhancerApp> {
     setState(() => _isDarkMode = !_isDarkMode);
   }
 
-  static const seedColor = Color(0xFF1FA37D); // green like the reference design
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rattamaar',
       debugShowCheckedModeBanner: false,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: seedColor),
-        textTheme: GoogleFonts.poppinsTextTheme(),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF7F9F8),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: Brightness.dark,
-        ),
-        textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       home: HomeShell(onToggleTheme: toggleTheme, isDarkMode: _isDarkMode),
     );
   }
@@ -384,26 +369,22 @@ class SubjectsPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final subject = subjects[index];
               final data = subject.data() as Map<String, dynamic>;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  title: Text(data['name'] ?? 'Untitled'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChaptersPage(
-                          courseId: courseId,
-                          subjectId: subject.id,
-                          subjectName: data['name'] ?? '',
-                        ),
+              return LevelCard(
+                accent: AppColors.levelSubject,
+                icon: Icons.book_outlined,
+                title: data['name'] ?? 'Untitled',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChaptersPage(
+                        courseId: courseId,
+                        subjectId: subject.id,
+                        subjectName: data['name'] ?? '',
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               );
             },
           );
@@ -450,27 +431,23 @@ class ChaptersPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final chapter = chapters[index];
               final data = chapter.data() as Map<String, dynamic>;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  title: Text(data['name'] ?? 'Untitled'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => LecturesPage(
-        courseId: courseId,
-        subjectId: subjectId,
-        chapterId: chapter.id,
-        chapterName: data['name'] ?? '',
-      ),
-    ),
-  );
-},
-                ),
+              return LevelCard(
+                accent: AppColors.levelChapter,
+                icon: Icons.bookmark_outline,
+                title: data['name'] ?? 'Untitled',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LecturesPage(
+                        courseId: courseId,
+                        subjectId: subjectId,
+                        chapterId: chapter.id,
+                        chapterName: data['name'] ?? '',
+                      ),
+                    ),
+                  );
+                },
               );
             },
           );
@@ -621,25 +598,20 @@ class LecturesPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final lecture = lectures[index];
               final data = lecture.data() as Map<String, dynamic>;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: const Icon(Icons.play_circle_fill, size: 32),
-                  title: Text(data['title'] ?? 'Untitled'),
-                  subtitle: Text('${((data['durationSec'] ?? 0) / 60).floor()} min'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => LectureDetailPage(data: data),
-                      ),
-                    );
-                  },
-                ),
+              return LevelCard(
+                accent: AppColors.levelLecture,
+                icon: Icons.play_circle_fill,
+                title: data['title'] ?? 'Untitled',
+                subtitle: '${((data['durationSec'] ?? 0) / 60).floor()} min',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LectureDetailPage(data: data),
+                    ),
+                  );
+                },
               );
-            },
           );
         },
       ),
