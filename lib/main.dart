@@ -79,12 +79,12 @@ class _HomeShellState extends State<HomeShell> {
   BannerAd? _bannerAd;
   bool _bannerLoaded = false;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    ExplorePage(),
-    DownloadsPage(),
-    NotificationsPage(),
-    MorePage(),
+  List<Widget> get _pages => [
+    const HomePage(),
+    const ExplorePage(),
+    const DownloadsPage(),
+    const NotificationsPage(),
+    MorePage(onToggleTheme: widget.onToggleTheme, isDarkMode: widget.isDarkMode),
   ];
 
   // Google's official TEST banner ad unit ID — replace with your real one from AdMob later
@@ -517,11 +517,41 @@ class NotificationsPage extends StatelessWidget {
 }
 
 class MorePage extends StatelessWidget {
-  const MorePage({super.key});
-  @override
-  Widget build(BuildContext context) => const Center(child: Text('Settings / Dark Mode / About'));
-}
+  final VoidCallback onToggleTheme;
+  final bool isDarkMode;
+  const MorePage({super.key, required this.onToggleTheme, required this.isDarkMode});
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('More')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: SwitchListTile(
+              secondary: Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode),
+              title: const Text('Dark Mode'),
+              subtitle: Text(isDarkMode ? 'Currently on' : 'Currently off'),
+              value: isDarkMode,
+              onChanged: (_) => onToggleTheme(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: const ListTile(
+              leading: Icon(Icons.info_outline),
+              title: Text('About Rattamaar'),
+              subtitle: Text('Study. Practice. Succeed.'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 class LecturesPage extends StatelessWidget {
   final String courseId;
   final String subjectId;
