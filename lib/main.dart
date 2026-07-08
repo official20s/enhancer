@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:async';
+import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
