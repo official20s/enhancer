@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -179,6 +180,32 @@ class HomePage extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text('Explore Courses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 10),
+                      Text('Search for notes, lectures, DPPs...',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -785,4 +812,153 @@ class _PdfCardState extends State<PdfCard> {
       ),
     );
   }
+}
+
+
+class SearchPage extends StatefulWidget {
+  const SearchPage({super.key});
+
+  @override
+  State<SearchPage> createState() => _SearchPageState();
+}
+
+class _SearchPageState extends State<SearchPage> {
+  final _controller = TextEditingController();
+  Timer? _debounce;
+  List<_SearchResult> _results = [];
+  bool _loading = false;
+
+  void _onChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () => _runSearch(value));
+  }
+
+  Future<void> _runSearch(String query) async {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) {
+      setState(() => _results = []);
+      return;
+    }
+    setState(() => _loading = true);
+
+    final results = <_SearchResult>[];
+    final firestore = FirebaseFirestore.instance;
+
+    final coursesSnap = await firestore.collection('courses').get();
+    for (final doc in coursesSnap.docs) {
+      final name = (doc.data()['name'] ?? '').toString();
+      if (name.toLowerCase().contains(q)) {
+        results.add(_SearchResult(type: 'Course', title: name, doc: doc));
+      }
+    }
+
+    final subjectsSnap = await firestore.collectionGroup('subjects').get();
+    for (final doc in subjectsSnap.docs) {
+      final name = (doc.data()['name'] ?? '').toString();
+      if (name.toLowerCase().contains(q)) {
+        results.add(_SearchResult(type: 'Subject', title: name, doc: doc));
+      }
+    }
+
+    final chaptersSnap = await firestore.collectionGroup('chapters').get();
+    for (final doc in chaptersSnap.docs) {
+      final name = (doc.data()['name'] ?? '').toString();
+      if (name.toLowerCase().contains(q)) {
+        results.add(_SearchResult(type: 'Chapter', title: name, doc: doc));
+      }
+    }
+
+    final lecturesSnap = await firestore.collectionGroup('lectures').get();
+    for (final doc in lecturesSnap.docs) {
+      final title = (doc.data()['title'] ?? '').toString();
+      if (title.toLowerCase().contains(q)) {
+        results.add(_SearchResult(type: 'Lecture', title: title, doc: doc));
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _results = results;
+      _loading = false;
+    });
+  }
+
+  void _openResult(_SearchResult r) {
+    final segments = r.doc.reference.path.split('/');
+    // segments: courses/{c}/subjects/{s}/chapters/{ch}/lectures/{l}
+    if (r.type == 'Course') {
+      Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SubjectsPage(courseId: r.doc.id, courseName: r.title)));
+    } else if (r.type == 'Subject') {
+      Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ChaptersPage(
+              courseId: segments[1], subjectId: r.doc.id, subjectName: r.title)));
+    } else if (r.type == 'Chapter') {
+      Navigator.push(context, MaterialPageRoute(
+          builder: (_) => LecturesPage(
+              courseId: segments[1], subjectId: segments[3], chapterId: r.doc.id, chapterName: r.title)));
+    } else if (r.type == 'Lecture') {
+      Navigator.push(context, MaterialPageRoute(
+          builder: (_) => LectureDetailPage(data: r.doc.data() as Map<String, dynamic>)));
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: TextField(
+          controller: _controller,
+          autofocus: true,
+          onChanged: _onChanged,
+          decoration: const InputDecoration(
+            hintText: 'Search courses, subjects, chapters, lectures...',
+            border: InputBorder.none,
+          ),
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _results.isEmpty
+              ? Center(
+                  child: Text(_controller.text.isEmpty ? 'Start typing to search' : 'No results found'),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: _results.length,
+                  itemBuilder: (context, index) {
+                    final r = _results[index];
+                    final icon = {
+                      'Course': Icons.menu_book,
+                      'Subject': Icons.book_outlined,
+                      'Chapter': Icons.bookmark_outline,
+                      'Lecture': Icons.play_circle_outline,
+                    }[r.type]!;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(icon),
+                        title: Text(r.title),
+                        subtitle: Text(r.type),
+                        onTap: () => _openResult(r),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+}
+
+class _SearchResult {
+  final String type;
+  final String title;
+  final QueryDocumentSnapshot doc;
+  _SearchResult({required this.type, required this.title, required this.doc});
 }
